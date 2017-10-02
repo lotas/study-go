@@ -1,4 +1,4 @@
-package blockchain
+package main
 
 import (
 	"crypto/sha256"
@@ -33,12 +33,12 @@ type Blockchain struct {
 	lastBlock           *Block
 }
 
-func NewBlockchain() *Blockchain {
-	bc := &Blockchain{}
+func NewBlockchain() Blockchain {
+	bc := Blockchain{}
 
 	b := Block{
 		previousHash: "1",
-		proof:        100,
+		proof:        1,
 	}
 	bc.chain = append(bc.chain, b)
 	bc.lastBlock = &b
@@ -47,11 +47,9 @@ func NewBlockchain() *Blockchain {
 }
 
 // NewBlock creates new block
-func (bc *Blockchain) NewBlock(proof Proof, previousHash string) *Block {
-	prevHash := previousHash
-	if prevHash == "" {
-		prevHash = Hash(bc.lastBlock)
-	}
+func (bc *Blockchain) NewBlock(proof Proof) *Block {
+	previousHash := Hash(bc.lastBlock)
+
 	b := Block{
 		index:         BlockIndex(len(bc.chain) + 1),
 		timestamp:     time.Now().UnixNano(),
@@ -76,6 +74,21 @@ func (bc *Blockchain) NewTransaction(s Sender, r Recipient, a Amount) BlockIndex
 	})
 
 	return bc.lastBlock.index + 1
+}
+
+// ProofOfWork finds a number p' such that hash(pp') contains leading 4 zeroes
+func ProofOfWork(lastProof Proof) Proof {
+	var proof Proof
+	for validProof(lastProof, proof) == false {
+		proof++
+	}
+	return proof
+}
+
+func validProof(lastProof, proof Proof) bool {
+	str := fmt.Sprintf("%d%d", lastProof, proof)
+	guess := fmt.Sprintf("%x", sha256.Sum256([]byte(str)))
+	return guess[:4] == "0000"
 }
 
 func Hash(block *Block) string {
