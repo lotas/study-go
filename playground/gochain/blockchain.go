@@ -14,66 +14,66 @@ type BlockIndex uint64
 type Proof uint64
 
 type Transaction struct {
-	sender    Sender
-	recipient Recipient
-	amount    Amount
+	Sender    Sender
+	Recipient Recipient
+	Amount    Amount
 }
 
 type Block struct {
-	index         BlockIndex
-	timestamp     int64
-	transacations []Transaction
-	proof         Proof
-	previousHash  string
+	Index         BlockIndex
+	Timestamp     int64
+	Transacations []Transaction
+	Proof         Proof
+	PreviousHash  string
 }
 
 type Blockchain struct {
-	chain               []Block
-	currentTransactions []Transaction
-	lastBlock           *Block
+	Chain               []Block
+	CurrentTransactions []Transaction
+	LastBlock           *Block
 }
 
 func NewBlockchain() Blockchain {
 	bc := Blockchain{}
 
 	b := Block{
-		previousHash: "1",
-		proof:        1,
+		PreviousHash: "1",
+		Proof:        1,
 	}
-	bc.chain = append(bc.chain, b)
-	bc.lastBlock = &b
+	bc.Chain = append(bc.Chain, b)
+	bc.LastBlock = &b
 
 	return bc
 }
 
 // NewBlock creates new block
 func (bc *Blockchain) NewBlock(proof Proof) *Block {
-	previousHash := Hash(bc.lastBlock)
+	previousHash := Hash(bc.LastBlock)
 
 	b := Block{
-		index:         BlockIndex(len(bc.chain) + 1),
-		timestamp:     time.Now().UnixNano(),
-		transacations: bc.currentTransactions,
-		proof:         proof,
-		previousHash:  previousHash,
+		Index:         BlockIndex(len(bc.Chain) + 1),
+		Timestamp:     time.Now().UnixNano(),
+		Transacations: bc.CurrentTransactions,
+		Proof:         proof,
+		PreviousHash:  previousHash,
 	}
 
-	bc.currentTransactions = []Transaction{}
+	bc.CurrentTransactions = []Transaction{}
 
-	bc.chain = append(bc.chain, b)
-	bc.lastBlock = &b
+	bc.Chain = append(bc.Chain, b)
+	bc.LastBlock = &b
 
 	return &b
 }
 
 func (bc *Blockchain) NewTransaction(s Sender, r Recipient, a Amount) BlockIndex {
-	bc.currentTransactions = append(bc.currentTransactions, Transaction{
-		sender:    s,
-		recipient: r,
-		amount:    a,
+	bc.CurrentTransactions = append(bc.CurrentTransactions, Transaction{
+		Sender:    s,
+		Recipient: r,
+		Amount:    a,
 	})
 
-	return bc.lastBlock.index + 1
+	return bc.LastBlock.Index + 1
 }
 
 // ProofOfWork finds a number p' such that hash(pp') contains leading 4 zeroes

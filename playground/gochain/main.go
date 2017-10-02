@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,19 +18,12 @@ func init() {
 
 func main() {
 
-	// c.NewTransaction("me", "you", 999)
-	// c.NewTransaction("me2", "you2", 111)
-	// c.NewTransaction("me3", "you3", 222)
-	// b := c.NewBlock(2, "")
-
-	// fmt.Printf("New blockchain %v\n", c)
-	// fmt.Printf("Last block index %v\n", b)
-
-	// fmt.Printf("Valid proof for 1: %d\n", ProofOfWork(1))
-
 	http.HandleFunc("/mine", handleMine)
 	http.HandleFunc("/transactions/new", handleTransactionsNew)
 	http.HandleFunc("/chain", handleChain)
+
+	http.HandleFunc("/nodes/register", handleNodeRegister)
+	http.HandleFunc("/nodes/resolve", handleNodeResolve)
 
 	fmt.Printf("Listening on localhost:%d\n", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil))
@@ -37,8 +31,8 @@ func main() {
 
 func handleMine(w http.ResponseWriter, r *http.Request) {
 	// 1. Calculate next proof
-	lastBlock := blockchain.lastBlock
-	lastProof := lastBlock.proof
+	lastBlock := blockchain.LastBlock
+	lastProof := lastBlock.Proof
 	newProof := ProofOfWork(lastProof)
 
 	// 2. Receive a reward for mining
@@ -49,10 +43,10 @@ func handleMine(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w,
 		"Mined new block #%d\ntransactions: %v\nproof: %d\nprevHash: %s\n",
-		block.index,
-		block.transacations,
-		block.proof,
-		block.previousHash,
+		block.Index,
+		block.Transacations,
+		block.Proof,
+		block.PreviousHash,
 	)
 }
 
@@ -72,9 +66,15 @@ func handleTransactionsNew(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleChain(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Len: %d\nChain: %v\nUnconfirmed: %v\n",
-		len(blockchain.chain),
-		blockchain.chain,
-		blockchain.currentTransactions,
-	)
+	w.Header().Set("Content-Type", "application/json")
+	str, _ := json.Marshal(blockchain)
+	w.Write(str)
+}
+
+func handleNodeRegister(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func handleNodeResolve(w http.ResponseWriter, r *http.Request) {
+
 }
