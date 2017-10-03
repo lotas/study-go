@@ -41,13 +41,13 @@ func handleMine(w http.ResponseWriter, r *http.Request) {
 	// 3. Forge new block by adding it to the chain
 	block := blockchain.NewBlock(newProof)
 
-	fmt.Fprintf(w,
-		"Mined new block #%d\ntransactions: %v\nproof: %d\nprevHash: %s\n",
-		block.Index,
-		block.Transacations,
-		block.Proof,
-		block.PreviousHash,
-	)
+	sendJson(struct {
+		Msg   string
+		Block *Block
+	}{
+		fmt.Sprintf("Mined new block #%d, proof: %d, prevHash: %s", block.Index, block.Proof, block.PreviousHash),
+		block,
+	}, w)
 }
 
 func handleTransactionsNew(w http.ResponseWriter, r *http.Request) {
@@ -56,19 +56,27 @@ func handleTransactionsNew(w http.ResponseWriter, r *http.Request) {
 	amount, _ := strconv.Atoi(r.FormValue("amount"))
 
 	if sender == "" || recipient == "" || amount == 0 {
-		fmt.Fprintf(w, "Invalid request")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	index := blockchain.NewTransaction(Sender(sender), Recipient(recipient), Amount(amount))
 
-	fmt.Fprintf(w, "Transaction will be added to Block %d\n", index)
+	sendJson(struct {
+		Index     BlockIndex
+		Sender    string
+		Recipient string
+		Amount    int
+	}{
+		index,
+		sender,
+		recipient,
+		amount,
+	}, w)
 }
 
 func handleChain(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	str, _ := json.Marshal(blockchain)
-	w.Write(str)
+	sendJson(blockchain, w)
 }
 
 func handleNodeRegister(w http.ResponseWriter, r *http.Request) {
@@ -77,4 +85,17 @@ func handleNodeRegister(w http.ResponseWriter, r *http.Request) {
 
 func handleNodeResolve(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func sendJson(data interface{}, w http.ResponseWriter) {
+	str, err := json.Marshal(blockchain)
+
+	if err != nil {
+		fmt.Printf("Error serializing object to json %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(str)
 }
