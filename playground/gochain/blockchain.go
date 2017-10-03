@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -12,6 +10,8 @@ type Recipient string
 type Amount uint64
 type BlockIndex uint64
 type Proof uint64
+
+type Node string
 
 type Transaction struct {
 	Sender    Sender
@@ -28,13 +28,16 @@ type Block struct {
 }
 
 type Blockchain struct {
+	Nodes               map[string]Node
 	Chain               []Block
 	CurrentTransactions []Transaction
 	LastBlock           *Block
 }
 
 func NewBlockchain() Blockchain {
-	bc := Blockchain{}
+	bc := Blockchain{
+		Nodes: make(map[string]Node),
+	}
 
 	b := Block{
 		PreviousHash: "1",
@@ -66,6 +69,12 @@ func (bc *Blockchain) NewBlock(proof Proof) *Block {
 	return &b
 }
 
+func (bc *Blockchain) RegisterNode(address string) Node {
+	node := Node(address)
+	bc.Nodes[address] = node
+	return node
+}
+
 func (bc *Blockchain) NewTransaction(s Sender, r Recipient, a Amount) BlockIndex {
 	bc.CurrentTransactions = append(bc.CurrentTransactions, Transaction{
 		Sender:    s,
@@ -76,22 +85,33 @@ func (bc *Blockchain) NewTransaction(s Sender, r Recipient, a Amount) BlockIndex
 	return bc.LastBlock.Index + 1
 }
 
-// ProofOfWork finds a number p' such that hash(pp') contains leading 4 zeroes
-func ProofOfWork(lastProof Proof) Proof {
-	var proof Proof
-	for validProof(lastProof, proof) == false {
-		proof++
+// ResolveConflicts is the Consensus Algorithm,
+// it resolves conflicts by replacing our chain with the longest one on the network
+func (bc *Blockchain) ResolveConflicts() bool {
+	var newChain []Block
+
+	// we are only looking for chains longer than ours
+	maxLen := len(bc.Chain)
+
+	for _, node := range bc.Nodes {
+		fmt.Printf("[%s]\n", node)
+
+		if otherChain, err := fetchChain(node); err == nil {
+			fmt.Printf("[%s] Recieved: %+v\n", node, otherChain)
+			if otherChain.Length > maxLen && ValidChain(otherChain.Chain) {
+				maxLen = otherChain.Length
+				newChain = otherChain.Chain
+				fmt.Printf("[%s] has longer chain: %d\n", node, maxLen)
+			} else {
+				fmt.Printf("[%s] is invalid or smaller: %d\n", node, otherChain.Length)
+			}
+		}
 	}
-	return proof
-}
 
-func validProof(lastProof, proof Proof) bool {
-	str := fmt.Sprintf("%d%d", lastProof, proof)
-	guess := fmt.Sprintf("%x", sha256.Sum256([]byte(str)))
-	return guess[:4] == "0000"
-}
+	if newChain != nil {
+		bc.Chain = newChain
+		return true
+	}
 
-func Hash(block *Block) string {
-	str, _ := json.Marshal(block)
-	return fmt.Sprintf("%x", sha256.Sum256(str))
+	return false
 }
